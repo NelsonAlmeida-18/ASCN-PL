@@ -1,0 +1,120 @@
+
+# we got two options
+# 1. We can get a pair of flags: old_password and new_password
+# 2. We can get a flag: password
+
+# If we get the pair of flags we decrypt the laravelio_config.yml file
+- name: Check for Ansible Vault header in the laravelio_config.yml file
+  command: "grep -q '$ANSIBLE_VAULT' ./deploy/app/laravelio_config.yml"
+  register: laravelio_encrypted
+  ignore_errors: true
+
+- name: Check for Ansible Vault header
+  command: "grep -q '$ANSIBLE_VAULT' ./deploy/database/db_config.yml"
+  register: db_encrypted
+  ignore_errors: true
+
+
+#Decrypt the file with the password provided in line
+- name: Decrypt the laravel.io config file
+  ansible.builtin.expect: 
+    command: "ansible-vault decrypt ./deploy/app/laravelio_config.yml"
+    responses: 
+      (?i)Vault password: "{{ p }}"
+  no_log: false
+  when:  laravelio_encrypted.rc == 0 and p is defined
+  register: decrypt_laravel_status
+
+- name: Decrypt the laravel.io config file
+  ansible.builtin.expect: 
+    command: "ansible-vault decrypt ./deploy/app/laravelio_config.yml"
+    responses: 
+      (?i)Vault password: "{{ old_password }}"
+  no_log: false
+  when:  laravelio_encrypted.rc == 0 and old_password is defined 
+  register: decrypt_laravel_status
+
+- name: Decrypt the db config file
+  ansible.builtin.expect: 
+    command: "ansible-vault decrypt ./deploy/database/db_config.yml"
+    responses: 
+      (?i)Vault password: "{{ p }}"
+  no_log: false
+  when:  db_encrypted.rc == 0 and p is defined 
+  register: decrypt_db_status
+
+- name: Decrypt the db config file
+  ansible.builtin.expect: 
+    command: "ansible-vault decrypt ./deploy/database/db_config.yml"
+    responses: 
+      (?i)Vault password: "{{ old_password }}"
+  no_log: false
+  when:  db_encrypted.rc == 0 and old_password is defined 
+  register: decrypt_db_status
+
+
+
+#replace the old value for the username db
+- name: Alter the value of the variables DB_USERNAME
+  ansible.builtin.replace:
+    path: ./deploy/app/laravelio_config.yml
+    regexp: '(.*)DB_USERNAME: .*'
+    replace: '\1DB_USERNAME: {{ db_username }}'
+  when:  db_username is defined 
+
+- name: Alter the value of the variables DB_PASSWORD
+  ansible.builtin.replace:
+    path: ./deploy/app/laravelio_config.yml
+    regexp: '(.*)DB_PASSWORD: .*'
+    replace: '\1DB_PASSWORD: {{ db_password }}'
+  when:  db_password is defined 
+
+- name: Alter the value of the variables DB_DATABASE
+  ansible.builtin.replace:
+    path: ./deploy/app/laravelio_config.yml
+    regexp: '(.*)DB_DATABASE: .*'
+    replace: '\1DB_DATABASE: {{ db_database }}'
+  when:  db_database is defined
+
+- name: Alter the value of the seed_database variable
+  ansible.builtin.replace:
+    path: ./deploy/app/laravelio_config.yml
+    regexp: '(.*)seed_database: .*'
+    replace: '\1seed_database: "{{ seed_database }}"'
+  when:  seed_database is defined and (seed_database == 'true' or seed_database == 'false')
+
+- name: Alter the value of the MYSQL_USER
+  ansible.builtin.replace:
+    path: ./deploy/database/db_config.yml
+    regexp: '(.*)MYSQL_USER: .*'
+    replace: '\1MYSQL_USER: {{ db_username }}'
+  when:  db_username is defined  
+
+- name: Alter the value of the MYSQL_PASSWORD
+  ansible.builtin.replace:
+    path: ./deploy/database/db_config.yml
+    regexp: '(.*)MYSQL_PASSWORD: .*'
+    replace: '\1MYSQL_PASSWORD: {{ db_password }}'
+  when:  db_password is defined 
+
+- name: Alter the value of the MYSQL_DATABASE
+  ansible.builtin.replace:
+    path: ./deploy/database/db_config.yml
+    regexp: '(.*)MYSQL_DATABASE: .*'
+    replace: '\1MYSQL_DATABASE: {{ db_database }}'
+  when:  db_database is defined 
+
+##Now lets deal with the gcp file regarding the username and password
+- name: Alter the value of the variables gcp_username
+  ansible.builtin.replace:
+    path: ./inventory/gcp.yml
+    regexp: '(.*)gcp_username: .*'
+    replace: '\1gcp_username: {{ gcp_username }}'
+  when:  gcp_username is defined
+
+- name: Alter the value of the variables gcp_password
+  ansible.builtin.replace:
+    path: ./inventory/gcp.yml
+    regexp: '(.*)gcp_password: .*'
+    replace: '\1gcp_password: {{ gcp_password }}'
+  when:  gcp_password is defined

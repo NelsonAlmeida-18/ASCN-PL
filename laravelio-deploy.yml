@@ -1,0 +1,144 @@
+- hosts: localhost
+  gather_facts: false
+  tasks:
+
+    #decrypt the files
+    - include: ./vault-handle-decrypt.yml
+
+    - name: Read inv
+      ansible.builtin.include_vars:
+        file: ./inventory/gcp.yml
+        name: gcp_vars
+      register: gcp_vars
+
+
+    - name: "Apply persistent volume"
+      command: kubectl apply -f ./deploy/persistent-volume.yml
+
+    - name: Create the database config map
+      command: kubectl apply -f ./deploy/database/db_config.yml
+
+    - name: Deploy database
+      command: kubectl apply -f ./deploy/database/db_deploy.yml
+
+    - name: Verify that the database has been deployed
+      command: kubectl get pods -l app=db
+      register: db_status
+      until: db_status.stdout.find('Running') != -1
+      retries: 30
+      delay: 10
+
+    - name: Start the database service
+      command: kubectl apply -f ./deploy/database/db_service.yml
+
+    # While the database isn't running, wait 5 seconds and try again
+    - name: Verify that the database is running
+      command: kubectl get pods -l app=db
+      register: db_status
+      until: db_status.stdout.find('Running') != -1
+      retries: 30
+      delay: 10
+
+    - name: Claim the app persistent volume
+      command: kubectl apply -f ./deploy/app/laravelio_pvc.yml
+
+    - name: Create the config map
+      command: kubectl apply -f ./deploy/app/laravelio_config.yml
+
+    - name: Deploy the app
+      command: kubectl apply -f ./deploy/app/laravelio_deploy.yml
+
+    - name: Deploy the app service
+      command: kubectl apply -f ./deploy/app/laravelio_service.yml
+
+    - name: Verify that the app is running
+      command: kubectl get pods -l app=laravelio
+      register: app_status
+      until: app_status.stdout.find('Running') != -1
+      retries: 60
+      delay: 10
+
+    - name: Verify that the app service is running and the app is exposed
+      command: kubectl get services -l app=laravelio
+      register: app_service_status
+      until: app_service_status.stdout.find('laravelio') != -1
+      retries: 60
+      delay: 10
+
+    - name: Deploy the Horizontal Pod Autoscaler
+      command: kubectl apply -f ./deploy/app/laravelio_hpa.yml
+
+    - name: Get the app service IP
+      command: kubectl get services -l app=laravelio -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}'
+      register: app_service_ip
+
+    - name: Debug
+      debug:
+        msg: "{{ app_service_ip.stdout }}"
+
+    - name: Get the app service port
+      command: kubectl get services -l app=laravelio -o jsonpath='{.items[0].spec.ports[0].port}'
+      register: app_service_port
+
+    - name: Update the gcp file with the new variables
+      ansible.builtin.replace:
+        path: ./inventory/gcp.yml
+        regexp: '(.*)app_ip: .*'
+        replace: '\1app_ip: {{ app_service_ip.stdout }}'
+
+    - name: Update the gcp file with the new variables
+      ansible.builtin.replace:
+        path: ./inventory/gcp.yml
+        regexp: '(.*)app_port: .*'
+        replace: '\1app_port: {{ app_service_port.stdout }}'
+
+
+    # Monitoring
+    - name: Enable Monitoring API if not enabled
+      gcp_serviceusage_service:
+        name: monitoring.googleapis.com
+        project: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_project }}"
+        auth_kind: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_auth_kind }}"
+        service_account_file: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_cred_file }}"
+        state: present
+      
+
+    - name: Enable Compute Engine API if not enabled
+      gcp_serviceusage_service:
+        name: compute.googleapis.com
+        project: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_project }}"
+        auth_kind: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_auth_kind }}"
+        service_account_file: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_cred_file }}"
+        state: present
+
+
+    # - name: Enable Cloud Build API if not enabled
+    #   gcp_serviceusage_service:
+    #     name: cloudbuild.googleapis.com
+    #     project: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_project }}"
+    #     auth_kind: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_auth_kind }}"
+    #     service_account_file: "{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_cred_file }}"
+    #     state: present
+
+    - name: Create Custom Monitoring Dashboard if not created
+      command: >
+        gcloud monitoring dashboards --project="{{ gcp_vars.ansible_facts.gcp_vars.all.vars.gcp_project }}"
+        create --config-from-file='{{ dashboard_path | default("./monitoring/dashboard.json") }}'
+      when: create_dashboard is defined and (create_dashboard == "yes" or create_dashboard == "true")
+      register: dashboard_status
+      # add option to pass in dashboard file name as variable
+
+    - name: Dashboard creation status
+      debug:
+        msg: "Dashboard {{ dashboard_status.stdout }} created successfully."
+      when: create_dashboard is defined and dashboard_status.rc == 0
+  
+    #Benchmarking
+
+    - name: Include benchmarking tasks
+      include_tasks: benchmarking/tasks/main.yml
+      when: benchmark_solution is defined and (benchmark_solution == "yes" or benchmark_solution == "true")
+
+
+    #call the vault-handle file with the encrypt tag
+    - include: ./vault-handle-encrypt.yml

@@ -1,0 +1,45 @@
+
+#Reencrypt the file
+- name: Encrypt the laravelio config file
+  ansible.builtin.expect: 
+    command: "ansible-vault encrypt ./deploy/app/laravelio_config.yml"
+    responses: 
+      (?i)New Vault password: "{{ p }}"
+      (?i)Confirm New Vault password: "{{ p }}"
+  no_log: true
+  ignore_errors: true
+  when:  p is defined
+
+- name: Encrypt the laravelio config file
+  ansible.builtin.expect: 
+    command: "ansible-vault encrypt ./deploy/app/laravelio_config.yml"
+    responses: 
+      (?i)New Vault password: "{{ new_password }}"
+      (?i)Confirm New Vault password: "{{ new_password }}"
+  no_log: true
+  ignore_errors: true
+  when:  new_password is defined
+
+- name: Encrypt the db config file
+  ansible.builtin.expect: 
+    command: "ansible-vault encrypt ./deploy/database/db_config.yml"
+    responses: 
+      (?i)New Vault password: "{{ p }}"
+      (?i)Confirm New Vault password: "{{ p }}"
+  no_log: true
+  ignore_errors: true
+  when:  p is defined
+
+
+- name: Encrypt the db config file
+  ansible.builtin.expect: 
+    command: "ansible-vault encrypt ./deploy/database/db_config.yml"
+    responses: 
+      (?i)New Vault password: "{{ new_password }}"
+      (?i)Confirm New Vault password: "{{ new_password }}"
+  no_log: true
+  ignore_errors: true
+  when:  new_password is defined
+
+#encrypt the username and password in gcp.yml file by getting its value and encrypt in base 64 and replace by it this new value
+  

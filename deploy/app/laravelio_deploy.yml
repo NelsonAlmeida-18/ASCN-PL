@@ -1,0 +1,51 @@
+# Playbook to deploy laravel.io and its components
+---
+#Deploy the laravelio app
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravelio
+  labels:
+    app: laravelio
+    tier: app
+
+#Adicionar mais replicas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: laravelio
+      tier: app
+  template:
+    metadata:
+      labels:
+        app: laravelio
+        tier: app
+    spec:
+      volumes:
+        - name: laravelio-app-volume
+          persistentVolumeClaim:
+            claimName: laravelio-app-pvc
+      containers:
+        - name: laravelio
+          image: nelsonalmeida18/ascn_laravelio:linux
+          imagePullPolicy: IfNotPresent
+        
+          envFrom:
+            - configMapRef:
+                name: laravelio-config
+
+          volumeMounts:
+            - mountPath: "/home/laravelio"
+              name: laravelio-app-volume
+          ports:
+            - containerPort: 80
+
+          resources:
+            limits:
+              memory: "4000Mi"
+              cpu: "4000m"
+            requests:
+              memory: "2000Mi"
+              cpu: "2000m"
+        

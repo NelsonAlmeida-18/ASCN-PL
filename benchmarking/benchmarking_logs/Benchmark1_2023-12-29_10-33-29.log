@@ -1,0 +1,10 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1703846014716,441,GET LOGIN PAGE,200,OK,Cenário 1 1-1,text,true,,46783,126,1,1,http://34.116.181.194:8000/login,318,0,77
+1703846017701,1147,POST LOGIN,200,OK,Cenário 1 1-1,text,true,,85712,2726,1,1,http://34.116.181.194:8000/user/testing,419,0,80
+1703846017701,419,POST LOGIN-0,302,Found,Cenário 1 1-1,text,true,,1559,1018,1,1,http://34.116.181.194:8000/login,419,0,80
+1703846018123,277,POST LOGIN-1,302,Found,Cenário 1 1-1,text,true,,1599,850,1,1,http://34.116.181.194:8000/user,277,0,61
+1703846018401,447,POST LOGIN-2,200,OK,Cenário 1 1-1,text,true,,82554,858,1,1,http://34.116.181.194:8000/user/testing,320,0,74
+1703846021785,466,GET PROFILE PAGE,200,OK,Cenário 1 1-1,text,true,,82554,858,1,1,http://34.116.181.194:8000/user/testing,321,0,70
+1703846023686,945,User logout,200,OK,Cenário 1 1-1,text,true,,235575,1830,1,1,http://34.116.181.194:8000,263,0,69
+1703846023686,263,User logout-0,302,Found,Cenário 1 1-1,text,true,,1534,984,1,1,http://34.116.181.194:8000/logout,263,0,69
+1703846023950,681,User logout-1,200,OK,Cenário 1 1-1,text,true,,234041,846,1,1,http://34.116.181.194:8000,416,0,65

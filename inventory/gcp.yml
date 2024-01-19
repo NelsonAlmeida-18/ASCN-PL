@@ -1,0 +1,21 @@
+---
+all:
+  vars:
+
+    # GKE cluster variables
+    gcp_project: "ascn-tp21"  # ID of GCP Project
+    gcp_auth_kind: "serviceaccount"  # Do not change
+    gcp_cred_file: "./ascn-pl21-517ca2c3902c.json"  # Path to service account keys (json file downloaded from GCP)
+
+    gcp_zone: "europe-central2"
+    gcp_image_type: "ubuntu_containerd"
+    gcp_machine_type: "e2-standard-4"  # Can be changed if necessary
+    gcp_disk_size_gb: 50  # Can be changed if necessary
+    gcp_initial_node_count: 3  # Number of nodes to create. Can be changed if necessary
+    gcp_mem_limit: 16Gi  # Can be changed if necessary
+
+    # APP variables
+    app_ip: 34.118.27.181
+    app_port: 8000
+
+    

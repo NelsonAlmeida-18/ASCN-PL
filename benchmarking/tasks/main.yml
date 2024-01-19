@@ -1,0 +1,77 @@
+---
+
+- name: Alter the app ip in the benchmarking .jmx files
+  ansible.builtin.replace:
+    path: ./benchmarking/Benchmark1.jmx
+    regexp: '(.*)<stringProp name="HTTPSampler.domain">.*'
+    replace: '\1<stringProp name="HTTPSampler.domain">{{ app_service_ip.stdout }}</stringProp>'
+  when: benchmark_solution is defined and (benchmark_solution == "yes" or benchmark_solution == "true")
+
+- name: Alter the app port in the benchmarking .jmx files
+  ansible.builtin.replace:
+    path: ./benchmarking/Benchmark1.jmx
+    regexp: '(.*)<stringProp name="HTTPSampler.port">.*'
+    replace: '\1<stringProp name="HTTPSampler.port">{{ app_service_port.stdout }}</stringProp>'
+  when: benchmark_solution is defined and (benchmark_solution == "yes" or benchmark_solution == "true")
+
+- name: Alter the app ip in the benchmarking .jmx files
+  ansible.builtin.replace:
+    path: ./benchmarking/Benchmark2.jmx
+    regexp: '(.*)<stringProp name="HTTPSampler.domain">.*'
+    replace: '\1<stringProp name="HTTPSampler.domain">{{ app_service_ip.stdout }}</stringProp>'
+  when: benchmark_solution is defined and (benchmark_solution == "yes" or benchmark_solution == "true")
+
+- name: Alter the app port in the benchmarking .jmx files
+  ansible.builtin.replace:
+    path: ./benchmarking/Benchmark2.jmx
+    regexp: '(.*)<stringProp name="HTTPSampler.port">.*'
+    replace: '\1<stringProp name="HTTPSampler.port">{{ app_service_port.stdout }}</stringProp>'
+  when: benchmark_solution is defined and (benchmark_solution == "yes" or benchmark_solution == "true")
+
+# JMeter
+
+- name: Download JMeter Binaries (Binaries - version 5.5)
+  get_url:
+    url: "https://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.5.tgz"
+    dest: "~/apache-jmeter-5.4.3.tgz"
+  tags:
+    - deploy
+
+- name: Unzip JMeter Binaries
+  unarchive:
+    src: "~/apache-jmeter-5.4.3.tgz"
+    dest: "~/"
+    remote_src: yes
+  tags:
+    - deploy
+
+- name: Copy Benchmarking1.jmx file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/benchmarking/Benchmark1.jmx"
+    dest: "~/apache-jmeter-5.5"
+  tags:
+    - benchmarking1
+
+- name: Copy Benchmarking2.jmx file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/benchmarking/Benchmark2.jmx"
+    dest: "~/apache-jmeter-5.5"
+  tags:
+    - benchmarking2
+
+- name: Get the date time for the benchmarking logs
+  set_fact:
+    date_time: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+  register: date_time
+
+- name: Benchmarking 1
+  command: >
+    ~/apache-jmeter-5.5/bin/jmeter -n -t {{ playbook_dir }}/benchmarking/Benchmark1.jmx -l {{ playbook_dir }}/benchmarking/benchmarking_logs/Benchmark1_{{ date_time.ansible_facts.date_time }}.log
+  tags:
+    - benchmark1
+
+- name: Benchmarking 2
+  command: >
+    ~/apache-jmeter-5.5/bin/jmeter -n -t ~/apache-jmeter-5.5/Benchmark2.jmx -l  {{ playbook_dir }}/benchmarking/benchmarking_logs/Benchmark2_{{ date_time.ansible_facts.date_time }}.log
+  tags:
+    - benchmark2

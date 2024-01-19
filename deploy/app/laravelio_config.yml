@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravelio-config
+  labels:
+    app: laravelio
+    tier: app
+data:
+  DB_CONNECTION: mysql
+  DB_HOST: db-service
+  DB_DATABASE: laravelio
+  DB_USERNAME: myuser
+  DB_PASSWORD: "password"
+  seed_database: "true"

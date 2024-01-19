@@ -1,0 +1,88 @@
+
+- hosts: localhost
+  tasks:
+
+    - include: ./vault-handle-decrypt.yml
+
+    - name: Read inv
+      ansible.builtin.include_vars:
+        file: ./inventory/gcp.yml
+        name: gcp_vars
+      register: gcp_vars
+
+    - name: Delete the Horizontal Pod Autoscaler
+      command: kubectl delete hpa laravelio-hpa
+      ignore_errors: true
+
+    - name: Delete the app service
+      command: kubectl delete service laravelio-service
+      ignore_errors: true
+    
+    - name: Delete the app deployment
+      command: kubectl delete deployment laravelio
+      ignore_errors: true
+    
+    - name: Delete the app persistent volume claim
+      command: kubectl delete pvc laravelio-app-pvc
+      ignore_errors: true
+    
+    - name: Delete the app config map
+      command: kubectl delete configmap laravelio-config
+      ignore_errors: true
+    
+    - name: Verify that the app is deleted
+      command: kubectl get pods -l app=laravelio
+      register: app_status
+      until: app_status.stdout.find('No resources found') == -1
+      retries: 60
+      delay: 10
+
+    - name: Delete the database service
+      command: kubectl delete service db-service
+      ignore_errors: true
+    
+    - name: Get db StatefulSet items
+      command: kubectl get statefulset -l app=db -o jsonpath='{.items[*].metadata.name}'
+      register: statefulset_items_raw
+      ignore_errors: true
+
+    - name: Split StatefulSet items
+      set_fact:
+        statefulset_items: "{{ statefulset_items_raw.stdout.split() | default([]) }}"
+
+
+    - name: Delete StatefulSets
+      command: kubectl delete statefulset "{{ item }}"
+      loop: "{{ statefulset_items }}"
+      ignore_errors: true
+    
+    - name: Get database persistent volume claims
+      command: kubectl get pvc -l app=db -o jsonpath='{.items[*].metadata.name}'
+      register: pvc_items_raw
+
+    - name: Split persistent volume claims items
+      set_fact:
+        statefulset_items: "{{ pvc_items_raw.stdout.split() | default([]) }}"
+    
+    - name: Delete database persistent volume claims
+      command: kubectl delete pvc "{{ item }}"
+      loop: "{{ statefulset_items }}"  # Change this line to use the correct variable name
+      when: delete_data is defined and delete_data == "true"
+      ignore_errors: true
+
+    - name: Delete the database config map
+      command: kubectl delete configmap db-config
+      ignore_errors: true
+
+    - name: Verify that the database is deleted
+      command: kubectl get pods -l app=db
+      register: db_status
+      until: db_status.stdout.find('No resources found') == -1
+      retries: 60
+      delay: 10
+    
+    - name: Delete the storage claims
+      command: kubectl delete -f ./deploy/persistent-volume.yml
+      ignore_errors: true
+
+    - include: ./vault-handle-encrypt.yml

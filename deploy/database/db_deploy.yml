@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db-statefulset
+  labels:
+    app: db
+    tier: database
+spec:
+  replicas: 1
+  serviceName: "db-service"  
+  selector:
+    matchLabels:
+      app: db
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0  # Perform rolling update for all pods at once
+
+  template:
+    metadata:
+      labels:
+        app: db
+        tier: database
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: db-config
+
+          ports:
+            - containerPort: 3306
+
+          resources:
+            limits:
+              memory: "3000Mi"
+              cpu: "2000m"
+            requests:
+              memory: "2000Mi"
+              cpu: "1000m"
+
+          volumeMounts:
+            - name: laravelio-db-pvc
+              mountPath: /var/lib/mysql
+
+  volumeClaimTemplates:
+    - metadata:
+        name: laravelio-db-pvc
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: laravelio-db-claim
+        resources:
+          requests:
+            storage: 10Gi

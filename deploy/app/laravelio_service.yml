@@ -1,0 +1,18 @@
+# Playbook to deploy laravel.io and its components
+---
+#Deploy the laravelio app
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravelio-service
+  namespace: "default"
+  labels:
+    app: laravelio
+spec:
+  type: LoadBalancer # Makes the service accessible on a static port on each Node in the cluster.
+  selector:
+    app: laravelio
+  ports:
+      # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+    - targetPort: 8000 # port that containers are listening on
+      port: 8000 # port exposed internally in the cluster
